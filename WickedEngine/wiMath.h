@@ -5,8 +5,10 @@
 #include <algorithm>
 #include <limits>
 
-#define _XM_FMA3_INTRINSICS_
-#define _XM_F16C_INTRINSICS_
+//#define _XM_FMA3_INTRINSICS_
+//#define _XM_F16C_INTRINSICS_
+#define _XM_ARM_NEON_INTRINSICS_
+
 
 #if __has_include("DirectXMath.h")
 // In this case, DirectXMath is coming from Windows SDK.
