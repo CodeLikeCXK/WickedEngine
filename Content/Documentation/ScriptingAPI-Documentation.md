@@ -31,6 +31,8 @@ This is a reference and explanation of Lua scripting features in Wicked Engine.
 	9. [Scene](#scene)
 		1. [Entity](#entity)
 		2. [Scene](#scene)
+		2. [RayIntersectionResult](#rayintersectionresult)
+		2. [SphereIntersectionResult](#sphereintersectionresult)
 		3. [NameComponent](#namecomponent)
 		4. [LayerComponent](#layercomponent)
 		5. [TransformComponent](#transformcomponent)
@@ -766,6 +768,7 @@ The scene holds components. Entity handles can be used to retrieve associated co
 - [outer]FILTER_ALL : uint	-- include everything
 - Intersects(Ray|Sphere|Capsule primitive, opt uint filterMask = ~0u, opt uint layerMask = ~0u, opt uint lod = 0) : int entity, Vector position,normal, float distance, Vector velocity, int subsetIndex, Matrix orientation, Vector uv, HumanoidBone humanoid_bone	-- intersects a primitive with the scene and returns collision parameters. If humanoid_bone is not `HumanoidBone.Count` then the intersection is a ragdoll, and entity refers to the humanoid entity
 - IntersectsFirst(Ray primitive, opt uint filterMask = ~0u, opt uint layerMask = ~0u, opt uint lod = 0) : bool	-- intersects a primitive with the scene and returns true immediately on intersection, false if there was no intersection. This can be faster for occlusion check than regular `Intersects` that searches for closest intersection.
+- IntersectsAll(Ray|Sphere|Capsule primitive, opt uint filterMask = ~0u, opt uint layerMask = ~0u, opt uint lod = 0) results[] -- intersects the scene with a primitive and returns array of results. In case of Ray, [RayIntersectionResult](#rayintersectionresult) will be returned, for Sphere and Capsule [SphereIntersectionResult](#sphereintersectionresult) will be returned
 - Update()  -- updates the scene and every entity and component inside the scene
 - Clear()  -- deletes every entity and component inside the scene
 - Merge(Scene other)  -- moves contents from an other scene into this one. The other scene will be empty after this operation (contents are moved, not copied)
@@ -934,6 +937,33 @@ The scene holds components. Entity handles can be used to retrieve associated co
 
 - FixupNans()	-- maintenance utility to help fix Nan issues in TransformComponents. Transforms containing nans will be cleared and renamed with _nanfix postfix
 
+#### RayIntersectionResult
+Result of one hit in scene.IntersectsAll
+- GetEntity() : Entity
+- GetPosition() : Vector
+- GetNormal() : Vector
+- GetUV() : Vector
+- GetVelocity() : Vector
+- GetDistance() : float
+- GetSubsetIndex() : int
+- GetVertexID0() : int
+- GetVertexID1() : int
+- GetVertexID2() : int
+- GetBarycentrics() : Vector
+- GetOrientation() : Vector
+- GetHumanoidBone() : int
+
+#### SphereIntersectionResult
+Result of one hit in scene.IntersectsAll
+- GetEntity() : Entity
+- GetPosition() : Vector
+- GetNormal() : Vector
+- GetVelocity() : Vector
+- GetDepth() : float
+- GetSubsetIndex() : int
+- GetOrientation() : Vector
+- GetHumanoidBone() : int
+
 #### NameComponent
 Holds a string that can more easily identify an entity to humans than an entity ID. 
 - Name : string
@@ -1019,6 +1049,7 @@ Describes an orientation in 3D space.
 - IsOrtho() : bool	-- returns true if the camera is using orthographic projection, false otherwise
 - GetOrthoVerticalSize() : float result
 - SetOrthoVerticalSize(float value)	-- Sets the vertical size of the camera in world space, used only in orthographic projection mode
+- ProjectToScreen(Vector point, Canvas canvas)	-- projects the world-space point to screen space within the canvas logical width and height units (sceen width and height). If the Z coordinate is positive that means that it is in front of the camera, otherwise it is behind (can be considered to be clipped)
 
 #### AnimationComponent
 - Timer : float
@@ -1651,7 +1682,8 @@ Note that CharacterComponent is NOT using physics, but a custom character logic.
 - PlayAnimation(Entity entity)	-- Play the animation. This will be blended in as primary animation, others will be belnded out.
 - StopAnimation()	-- stops current animation
 - SetAnimationAmount(float value)	-- Set target blend amount of current animation
-- GetAnimatioNAmount() : float	-- returns target blend amount of current animation
+- GetAnimationAmount() : float	-- returns target blend amount of current animation
+- GetAnimationTimer() : float	-- returns the timer of current animation
 - IsAnimationEnded() : bool	--returns true if the current animation is ended, false otherwise
 
 - SetGroundFriction(float value)	-- velocity multiplier when moving on ground, default: 0.92
