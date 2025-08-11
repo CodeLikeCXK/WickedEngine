@@ -9,7 +9,6 @@
 #include <wiUnorderedSet.h>
 
 #define TINYGLTF_IMPLEMENTATION
-#define TINYGLTF_NO_FS
 #define TINYGLTF_NO_STB_IMAGE
 #define TINYGLTF_NO_STB_IMAGE_WRITE
 #include "tiny_gltf.h"
@@ -23,8 +22,10 @@ using namespace wi::scene;
 using namespace wi::ecs;
 using json = nlohmann::json;
 
-namespace tinygltf
+namespace wi::tinygltf
 {
+
+	using namespace ::tinygltf;
 
 	bool FileExists(const std::string& abs_filename, void*) {
 		return wi::helper::FileExists(abs_filename);
@@ -521,19 +522,19 @@ void ImportModel_GLTF(const std::string& fileName, Scene& scene)
 	std::string warn;
 
 	tinygltf::FsCallbacks callbacks;
-	callbacks.ReadWholeFile = tinygltf::ReadWholeFile;
-	callbacks.WriteWholeFile = tinygltf::WriteWholeFile;
-	callbacks.FileExists = tinygltf::FileExists;
-	callbacks.ExpandFilePath = tinygltf::ExpandFilePath;
-	callbacks.GetFileSizeInBytes = tinygltf::GetFileSizeInBytes;
+	callbacks.ReadWholeFile = wi::tinygltf::ReadWholeFile;
+	callbacks.WriteWholeFile = wi::tinygltf::WriteWholeFile;
+	callbacks.FileExists = wi::tinygltf::FileExists;
+	callbacks.GetFileSizeInBytes = wi::tinygltf::GetFileSizeInBytes;
+	callbacks.ExpandFilePath = wi::tinygltf::ExpandFilePath;
 
 	bool ret = loader.SetFsCallbacks(callbacks);
 	assert(ret);
 
 	wi::resourcemanager::ResourceSerializer seri; // keep this alive to not delete loaded images while importing gltf
-	loader.SetImageLoader(tinygltf::LoadImageData, &seri);
-	loader.SetImageWriter(tinygltf::WriteImageData, nullptr);
-	
+	loader.SetImageLoader(wi::tinygltf::LoadImageData, &seri);
+	loader.SetImageWriter(wi::tinygltf::WriteImageData, nullptr);
+
 	LoaderState state;
 	state.scene = &scene;
 
@@ -3953,11 +3954,13 @@ void ExportModel_GLTF(const std::string& filename, Scene& scene)
 	tinygltf::TinyGLTF writer;
 
 	tinygltf::FsCallbacks callbacks;
-	callbacks.ReadWholeFile = tinygltf::ReadWholeFile;
-	callbacks.WriteWholeFile = tinygltf::WriteWholeFile;
-	callbacks.FileExists = tinygltf::FileExists;
-	callbacks.ExpandFilePath = tinygltf::ExpandFilePath;
-	writer.SetFsCallbacks(callbacks);
+	callbacks.ReadWholeFile = wi::tinygltf::ReadWholeFile;
+	callbacks.WriteWholeFile = wi::tinygltf::WriteWholeFile;
+	callbacks.FileExists = wi::tinygltf::FileExists;
+	callbacks.ExpandFilePath = wi::tinygltf::ExpandFilePath;
+	callbacks.GetFileSizeInBytes = wi::tinygltf::GetFileSizeInBytes;
+	bool res = writer.SetFsCallbacks(callbacks);
+	assert(res);
 
 	LoaderState state;
 	state.scene = &scene;
@@ -5200,6 +5203,13 @@ void ExportModel_GLTF(const std::string& filename, Scene& scene)
 		
 		tinygltf::Animation animation_builder;
 
+		Entity entity = wiscene.animations.GetEntity(anim_id);
+		const NameComponent* name = wiscene.names.GetComponent(entity);
+		if (name != nullptr)
+		{
+			animation_builder.name = name->name;
+		}
+
 		for(auto& sampler : animation.samplers)
 		{
 			tinygltf::AnimationSampler sampler_builder;
@@ -5247,13 +5257,14 @@ void ExportModel_GLTF(const std::string& filename, Scene& scene)
 	auto file_extension = wi::helper::toUpper(wi::helper::GetExtensionFromFileName(filename));
 	if(file_extension == "GLB")
 	{
-		writer.WriteGltfSceneToFile(&state.gltfModel, filename, false, true, true, true);
+		res = writer.WriteGltfSceneToFile(&state.gltfModel, filename, false, true, true, true);
 	}
 	else
 	{
-		writer.WriteGltfSceneToFile(&state.gltfModel, filename, false, false, true, false);
+		res = writer.WriteGltfSceneToFile(&state.gltfModel, filename, false, false, true, false);
 	}
 
+	assert(res);
 	// Restore scene world orientation
 	FlipZAxis(state);
 	wiscene.Update(0.f);
