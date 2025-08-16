@@ -528,7 +528,7 @@ texture = texturehelper.CreateGradientTexture(
 	256, 256, -- resolution of the texture
 	Vector(0.5, 0.5), Vector(0.5, 0), -- start and end uv coordinates will specify the gradient direction and extents
 	GradientFlags.Inverse | GradientFlags.Smoothstep | GradientFlags.PerlinNoise, -- modifier flags bitwise combination
-	"rrr1", -- for each channel ,you can specify one of the following characters: 0, 1, r, g, b, a
+	"rrr1", -- for each channel, you can specify one of the following characters: 0, 1, r, g, b, a, x, y, z, w (lower or upper case)
 	2, -- perlin noise scale
 	123, -- perlin noise seed
 	6, -- perlin noise octaves
@@ -1817,6 +1817,8 @@ It can hold Sprites and SpriteFonts and can sort them by layers, update and rend
 - SetLayerOrder(string name, int order)
 - SetSpriteOrder(Sprite sprite, int order)
 - SetFontOrder(SpriteFont font, int order)
+- GetHDRScaling() : float	-- returns HDR scaling value used for SDR to HDR linear output mapping conversion (default: 9.0)
+- SetHDRScaling(float value)	-- sets HDR scaling value used for SDR to HDR linear output mapping conversion (default: 9.0)
 - CopyFrom(RenderPath other) -- copies everything from other renderpath into this
 
 #### RenderPath3D

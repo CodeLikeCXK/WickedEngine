@@ -31,6 +31,12 @@ endif()
 if (WIN32)
     # TODO: Choose whether to use SDL2 on windows as well
     set(TARGET_NAME WickedEngine_Windows)
+
+    if (MSVC)
+        add_compile_options(
+            /bigobj
+        )
+    endif()
 else ()
     set(TARGET_NAME WickedEngine_Linux)
     find_package(SDL2 REQUIRED)
@@ -185,14 +191,6 @@ if (WIN32)
     target_compile_definitions(${TARGET_NAME} PUBLIC
         UNICODE _UNICODE
     )
-
-    if (MSVC)
-        add_compile_options(
-            /W3
-            /MP
-            /bigobj
-        )
-    endif()
 
     set(LIBDXCOMPILER "dxcompiler.dll")
 else ()

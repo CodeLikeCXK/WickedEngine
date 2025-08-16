@@ -97,6 +97,10 @@ void FlushBarriers(CommandList cmd)
 }
 void PushBarrier(const GPUBarrier& barrier)
 {
+	if (barrier.type == GPUBarrier::Type::BUFFER && barrier.buffer.state_before == barrier.buffer.state_after)
+		return;
+	if (barrier.type == GPUBarrier::Type::IMAGE && barrier.image.layout_before == barrier.image.layout_after)
+		return;
 	barrier_stack.push_back(barrier);
 }
 
@@ -2229,15 +2233,19 @@ void SetUpStates()
 	rs.fill_mode = FillMode::SOLID;
 	rs.cull_mode = CullMode::BACK;
 	rs.front_counter_clockwise = true;
+	// Note: biases work slightly differently with unorm and float formats
+	//	depth_bias				: needs to be tested when light is facing surface head-on (for example: directional light pointing down perpendicular to plane)
+	//	slope_scaled_depth_bias	: needs to be tested when light gets more parallel to surface. This can cause holes in shadow maps at mismatching triangle orientations
 	if (IsFormatUnorm(format_depthbuffer_shadowmap))
 	{
 		rs.depth_bias = -1;
+		rs.slope_scaled_depth_bias = -4.0f;
 	}
 	else
 	{
-		rs.depth_bias = -1000;
+		rs.depth_bias = -10;
+		rs.slope_scaled_depth_bias = -3.4f;
 	}
-	rs.slope_scaled_depth_bias = -6.0f;
 	rs.depth_bias_clamp = 0;
 	rs.depth_clip_enable = false;
 	rs.multisample_enable = false;
@@ -10608,12 +10616,10 @@ void RayTraceScene(
 	if (output_depth != nullptr)
 	{
 		device->BindUAV(output_depth, 3, cmd);
-		PushBarrier(GPUBarrier::Image(output_depth, output_depth->desc.layout, ResourceState::UNORDERED_ACCESS));
 	}
 	if (output_stencil != nullptr)
 	{
 		device->BindUAV(output_stencil, 4, cmd);
-		PushBarrier(GPUBarrier::Image(output_stencil, output_stencil->desc.layout, ResourceState::UNORDERED_ACCESS));
 	}
 	FlushBarriers(cmd);
 
@@ -10652,14 +10658,6 @@ void RayTraceScene(
 	);
 
 	PushBarrier(GPUBarrier::Image(&output, ResourceState::UNORDERED_ACCESS, output.desc.layout));
-	if (output_depth != nullptr)
-	{
-		PushBarrier(GPUBarrier::Image(output_depth, ResourceState::UNORDERED_ACCESS, output_depth->desc.layout));
-	}
-	if (output_stencil != nullptr)
-	{
-		PushBarrier(GPUBarrier::Image(output_stencil, ResourceState::UNORDERED_ACCESS, output_stencil->desc.layout));
-	}
 	FlushBarriers(cmd);
 
 	if (output_depth_stencil != nullptr)
@@ -18126,14 +18124,17 @@ void CopyDepthStencil(
 		{
 			device->EventBegin("CopyDepth", cmd);
 			device->BindPipelineState(&PSO_copyDepth, cmd);
+			PushBarrier(GPUBarrier::Image(input_depth, input_depth->desc.layout, ResourceState::SHADER_RESOURCE));
 			device->BindResource(input_depth, 0, cmd);
 			device->Draw(3, 0, cmd);
+			PushBarrier(GPUBarrier::Image(input_depth, ResourceState::SHADER_RESOURCE, input_depth->desc.layout));
 			device->EventEnd(cmd);
 		}
 
 		if (input_stencil != nullptr)
 		{
 			device->EventBegin("CopyStencilBits", cmd);
+			PushBarrier(GPUBarrier::Image(input_stencil, input_stencil->desc.layout, ResourceState::SHADER_RESOURCE));
 			device->BindResource(input_stencil, 0, cmd);
 
 			StencilBitPush push = {};
@@ -18162,6 +18163,7 @@ void CopyDepthStencil(
 				bit_index++;
 				stencil_bits_to_copy >>= 1;
 			}
+			PushBarrier(GPUBarrier::Image(input_stencil, ResourceState::SHADER_RESOURCE, input_stencil->desc.layout));
 			device->EventEnd(cmd);
 		}
 
